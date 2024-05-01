@@ -6,7 +6,7 @@
 	"license": "Apache-2.0 OR MIT",
 	"version": "0.1.0",
 	"engines": {
-		"vscode": "^1.71.0"
+		"vscode": "^1.76.0"
 	},
 	"main": "./out/extension.js",
 	"contributes": {
@@ -71,23 +71,28 @@
 		"build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",
 		"vscode:prepublish": "npm run build-base -- --minify",
 		"package": "vsce package",
-		"compile": "npm run build-base -- --sourcemap",
-		"watch": "npm run build-base -- --sourcemap --watch",
+		"compile": "npm run build-base --sourcemap",
+		"watch": "npm run build-base --sourcemap --watch",
 		"check": "tsc --noEmit",
 		"test": ""
 	},
 	"dependencies": {
-		"vscode-languageclient": "^9.0.1"
+		"vscode-languageclient": "9.0.1"
 	},
 	"devDependencies": {
-		"@types/node": "^20.11.28",
-		"@types/vscode": "~1.71.0",
+		"@types/node": "18.15.3",
+		"@types/vscode": "1.76.0",
 		"@typescript-eslint/eslint-plugin": "^7.2.0",
-		"@typescript-eslint/parser": "^7.2.0",
-		"@vscode/vsce": "^2.24.0",
-		"esbuild": "^0.20.2",
-		"ovsx": "^0.8.3",
+        "@typescript-eslint/parser": "^7.2.0",
+		"@vscode/vsce": "2.26.0",
+		"esbuild": "0.20.2",
+		"eslint": "^8.57.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-plugin-import": "^2.29.1",
+        "eslint-plugin-n": "^16.6.2",
+        "eslint-plugin-promise": "^6.1.1",
+		"ovsx": "0.9.1",
 		"prettier": "^3.2.5",
-		"typescript": "^5.4.2"
+		"typescript": "5.4.5"
 	}
 }
