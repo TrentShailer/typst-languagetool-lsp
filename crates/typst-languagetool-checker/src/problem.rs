@@ -1,16 +1,14 @@
 use languagetool_rust::check::Match;
-use serde::Serialize;
 use typst::syntax::{Source, SyntaxNode};
-use wasm_bindgen::prelude::*;
 
 use crate::{position::Position, range::Range};
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Problem {
     pub range_start: Position,
     pub range_end: Position,
     pub message: String,
+    pub match_string: String,
     pub replacements: Vec<String>,
     pub rule_category: String,
     pub rule_id: String,
@@ -22,6 +20,7 @@ impl Problem {
         paragraph: &[&SyntaxNode],
         node_ranges: &[Range],
         check_match: Match,
+        match_string: String,
     ) -> Option<Self> {
         let match_local_range = Range::new(check_match.offset, check_match.length);
 
@@ -51,6 +50,7 @@ impl Problem {
         Some(Self {
             range_start,
             range_end,
+            match_string,
             message: check_match.message,
             replacements: check_match
                 .replacements

@@ -1,8 +1,4 @@
-use serde::Serialize;
-use wasm_bindgen::prelude::*;
-
-#[derive(Clone, Debug, Default, Hash, PartialEq, PartialOrd, Serialize)]
-#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, PartialOrd)]
 pub struct Position {
     pub line: usize,
     pub column: usize,

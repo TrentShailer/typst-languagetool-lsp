@@ -5,3 +5,4 @@ members = ["crates/*"]
 [workspace.dependencies]
 typst = "0.11.0"
 typst-languagetool-preprocessor = { path = "crates/typst-languagetool-preprocessor" }
+typst-languagetool-checker = { path = "crates/typst-languagetool-checker" }

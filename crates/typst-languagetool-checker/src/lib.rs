@@ -12,9 +12,7 @@ use languagetool_rust::{CheckRequest, ServerClient};
 use problem::Problem;
 use typst::syntax::{FileId, Source, VirtualPath};
 use typst_languagetool_preprocessor::preprocess;
-use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
 pub async fn check_file(
     host: &str,
     port: &str,
@@ -26,7 +24,7 @@ pub async fn check_file(
     disabled_rules: Option<Vec<String>>,
     disabled_categories: Option<Vec<String>>,
     ignore_words: Option<Vec<String>>,
-) -> Result<JsValue, JsValue> {
+) -> Result<Vec<Problem>, languagetool_rust::error::Error> {
     let source = Source::new(
         FileId::new(None, VirtualPath::new(file_path)),
         file_contents,
@@ -59,10 +57,7 @@ pub async fn check_file(
 
     // For each check result, find the problems
     while let Some((check_result, node_ranges, blob, index)) = tasks.next().await {
-        let check_response = match check_result {
-            Ok(v) => v,
-            Err(e) => return Err(e.to_string().into()),
-        };
+        let check_response = check_result?;
         let paragraph = paragraphs.get(index).unwrap();
 
         for check_match in check_response.matches {
@@ -74,13 +69,17 @@ pub async fn check_file(
                 }
             }
 
-            if let Some(problem) =
-                Problem::try_from_match(&source, paragraph, &node_ranges, check_match)
-            {
+            if let Some(problem) = Problem::try_from_match(
+                &source,
+                paragraph,
+                &node_ranges,
+                check_match,
+                match_string.to_string(),
+            ) {
                 problems.push(problem);
             };
         }
     }
 
-    Ok(serde_wasm_bindgen::to_value(&problems)?)
+    Ok(problems)
 }

@@ -1,0 +1,93 @@
+{
+	"name": "typst-languagetool-lsp",
+	"description": "A language server to get grammar checking in Typst via Languagetool",
+	"displayName": "Languagetool Typst LSP",
+	"author": "Trent Shailer",
+	"license": "Apache-2.0 OR MIT",
+	"version": "0.1.0",
+	"engines": {
+		"vscode": "^1.71.0"
+	},
+	"main": "./out/extension.js",
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "Typst Languagetool LSP",
+			"properties": {
+				"typst-languagetool-lsp.host": {
+					"title": "Host",
+					"description": "URL of your languagetool server.",
+					"type": "string",
+					"order": 0
+				},
+				"typst-languagetool-lsp.port": {
+					"title": "Port",
+					"description": "Port of your languagetool server, leave blank for no port.",
+					"type": "string",
+					"order": 1
+				},
+				"typst-languagetool-lsp.language": {
+					"title": "Language",
+					"description": "Language code for languagetool.",
+					"type": "string",
+					"default": "en-GB",
+					"order": 2
+				},
+				"typst-languagetool-lsp.disabled_rules": {
+					"title": "Disabled Rules",
+					"description": "List of disabled rule ids.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"order": 3
+				},
+				"typst-languagetool-lsp.disabled_categories": {
+					"title": "Disabled Rule Categories",
+					"description": "List of disabled rule category ids.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"order": 4
+				},
+				"typst-languagetool-lsp.ignore_words": {
+					"title": "Ignored Words",
+					"description": "List of words to ignore problems with, case sensitive.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"order": 5
+				}
+			}
+		},
+		"commands": []
+	},
+	"activationEvents": [
+		"onLanguage:typst"
+	],
+	"scripts": {
+		"build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",
+		"vscode:prepublish": "npm run build-base -- --minify",
+		"package": "vsce package",
+		"compile": "npm run build-base -- --sourcemap",
+		"watch": "npm run build-base -- --sourcemap --watch",
+		"check": "tsc --noEmit",
+		"test": ""
+	},
+	"dependencies": {
+		"vscode-languageclient": "^9.0.1"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.28",
+		"@types/vscode": "~1.71.0",
+		"@typescript-eslint/eslint-plugin": "^7.2.0",
+		"@typescript-eslint/parser": "^7.2.0",
+		"@vscode/vsce": "^2.24.0",
+		"esbuild": "^0.20.2",
+		"ovsx": "^0.8.3",
+		"prettier": "^3.2.5",
+		"typescript": "^5.4.2"
+	}
+}
