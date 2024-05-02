@@ -1,0 +1,6 @@
+**
+!out/extension.js
+!out/typst-languagetool-lsp
+!out/typst-languagetool-lsp.exe
+!package.json
+!package-lock.json

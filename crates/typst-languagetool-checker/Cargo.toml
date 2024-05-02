@@ -1,6 +1,6 @@
 [package]
 name = "typst-languagetool-checker"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -12,3 +12,7 @@ languagetool-rust = { version = "^2.1", default-features = false, features = [
 	"native-tls",
 ] }
 thiserror = "1.0.59"
+log = "0.4.21"
+
+[dev-dependencies]
+tokio = { version = "1.37.0", features = ["full"] }

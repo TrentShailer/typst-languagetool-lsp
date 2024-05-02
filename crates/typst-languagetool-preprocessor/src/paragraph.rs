@@ -38,9 +38,11 @@ impl From<SyntaxKind> for NodeType {
                 NodeType::NonParagraph
             }
 
-            SyntaxKind::Text | SyntaxKind::SmartQuote | SyntaxKind::Space | SyntaxKind::Raw => {
-                NodeType::Capture
-            }
+            SyntaxKind::Text
+            | SyntaxKind::SmartQuote
+            | SyntaxKind::Space
+            | SyntaxKind::Raw
+            | SyntaxKind::Ref => NodeType::Capture,
 
             _ => NodeType::Normal,
         }

@@ -27,8 +27,19 @@ struct Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         let capabilities = ServerCapabilities {
-            text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+            text_document_sync: Some(TextDocumentSyncCapability::Options(
+                TextDocumentSyncOptions {
+                    open_close: Some(true),
+                    change: Some(TextDocumentSyncKind::FULL),
+                    will_save: None,
+                    will_save_wait_until: None,
+                    save: Some(TextDocumentSyncSaveOptions::SaveOptions(SaveOptions {
+                        include_text: Some(true),
+                    })),
+                },
+            )),
             code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+
             ..Default::default()
         };
         Ok(InitializeResult {
@@ -44,23 +55,33 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.on_change(TextDocumentItem {
-            language_id: params.text_document.language_id,
-            uri: params.text_document.uri,
-            text: params.text_document.text,
-            version: params.text_document.version,
-        })
+        self.check_file(
+            params.text_document.uri,
+            params.text_document.text,
+            Some(params.text_document.version),
+        )
         .await
     }
 
     async fn did_change(&self, mut params: DidChangeTextDocumentParams) {
-        self.on_change(TextDocumentItem {
-            language_id: String::from("typst"),
-            uri: params.text_document.uri,
-            text: std::mem::take(&mut params.content_changes[0].text),
-            version: params.text_document.version,
-        })
+        self.check_file(
+            params.text_document.uri,
+            std::mem::take(&mut params.content_changes[0].text),
+            Some(params.text_document.version),
+        )
         .await
+    }
+
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        self.client
+            .log_message(MessageType::INFO, "Saved file")
+            .await;
+        let text = match params.text {
+            Some(v) => v,
+            None => return,
+        };
+
+        self.check_file(params.text_document.uri, text, None).await
     }
 
     async fn code_action(
@@ -224,7 +245,7 @@ impl Backend {
         })
     }
 
-    async fn on_change(&self, params: TextDocumentItem) {
+    async fn check_file(&self, uri: Url, text: String, version: Option<i32>) {
         let configuration = match self.get_configuration().await {
             Ok(v) => v,
             Err(e) => {
@@ -235,17 +256,25 @@ impl Backend {
             }
         };
 
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!("Checking with client config: {:#?}", configuration),
+            )
+            .await;
+
         let problems = check_file(
             &configuration.host,
             &configuration.port,
-            params.uri.as_str(),
-            params.text,
+            uri.as_str(),
+            text,
             configuration.language,
             Some(configuration.disabled_rules),
             Some(configuration.disabled_categories),
             Some(configuration.ignore_words),
         )
         .await;
+
         let problems = match problems {
             Ok(v) => v,
             Err(e) => {
@@ -306,7 +335,7 @@ impl Backend {
         }
 
         self.client
-            .publish_diagnostics(params.uri.clone(), diagnostics, Some(params.version))
+            .publish_diagnostics(uri.clone(), diagnostics, version)
             .await;
     }
 }

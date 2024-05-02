@@ -1,5 +1,5 @@
 use languagetool_rust::check::Match;
-use typst::syntax::{Source, SyntaxNode};
+use typst::syntax::{Source, SyntaxKind, SyntaxNode};
 
 use crate::{position::Position, range::Range};
 
@@ -24,12 +24,23 @@ impl Problem {
     ) -> Option<Self> {
         let match_local_range = Range::new(check_match.offset, check_match.length);
 
-        // find the node that contains the start of the match
-        let (node, node_local_range) =
-            match find_match_node(&match_local_range, paragraph, node_ranges) {
-                Some(v) => v,
-                None => return None,
-            };
+        // ignore errors that include a raw node or a ref node
+        let (nodes, node_local_ranges) =
+            find_match_nodes(&match_local_range, paragraph, node_ranges);
+
+        if nodes.is_empty() || node_local_ranges.is_empty() {
+            return None;
+        }
+
+        if nodes.iter().any(|node| match node.kind() {
+            SyntaxKind::Raw | SyntaxKind::Ref => true,
+            _ => false,
+        }) {
+            return None;
+        }
+
+        let node = nodes[0];
+        let node_local_range = node_local_ranges[0];
 
         let node_range = match source.range(node.span()) {
             Some(v) => v,
@@ -40,7 +51,6 @@ impl Problem {
 
         let global_start = node_range.start + match_start_offset;
 
-        // TODO These are 0 indexed, vscode editor is 1 indexed
         let (range_start, range_end) =
             match get_match_range(source, global_start, match_local_range) {
                 Some(v) => v,
@@ -90,21 +100,25 @@ fn get_match_range(
     ))
 }
 
-fn find_match_node<'a>(
+fn find_match_nodes<'a>(
     match_range: &Range,
     nodes: &[&'a SyntaxNode],
     node_ranges: &'a [Range],
-) -> Option<(&'a SyntaxNode, &'a Range)> {
+) -> (Vec<&'a SyntaxNode>, Vec<&'a Range>) {
+    let mut match_nodes = vec![];
+    let mut match_ranges = vec![];
+
     for (index, node) in nodes.iter().enumerate() {
         let node_range = match node_ranges.get(index) {
             Some(v) => v,
-            None => return None,
+            None => return (match_nodes, match_ranges),
         };
 
         if node_range.contains(match_range) {
-            return Some((node, node_range));
+            match_nodes.push(node);
+            match_ranges.push(node_range);
         }
     }
 
-    None
+    return (match_nodes, match_ranges);
 }
