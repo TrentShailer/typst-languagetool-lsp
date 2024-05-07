@@ -2462,7 +2462,7 @@ checksum = "f13f85360328da54847dd7fefaf272dfa5b6d1fdeb53f32938924c39bf5b2c6c"
 
 [[package]]
 name = "typst-languagetool-checker"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "futures",
  "languagetool-rust",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "typst-languagetool-lsp"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2487,7 +2487,7 @@ dependencies = [
 
 [[package]]
 name = "typst-languagetool-preprocessor"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "typst",
 ]

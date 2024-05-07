@@ -13,6 +13,8 @@ pub fn get_paragraphs(root: &SyntaxNode) -> Vec<Vec<&SyntaxNode>> {
 
 /// The type of a given syntax node
 enum NodeType {
+    /// A node that needs to be handled explicitly
+    SpecialCase,
     /// A node that marks the end of a paragraph
     ParagraphTerminator,
     /// A node that marks the end of a paragraph and all child paragraphs
@@ -28,21 +30,23 @@ enum NodeType {
 impl From<SyntaxKind> for NodeType {
     fn from(value: SyntaxKind) -> Self {
         match value {
+            SyntaxKind::Hash | SyntaxKind::Raw => NodeType::SpecialCase,
+
             SyntaxKind::Parbreak | SyntaxKind::Eof => NodeType::ParagraphTerminator,
 
-            SyntaxKind::Heading | SyntaxKind::Linebreak | SyntaxKind::Named => {
-                NodeType::ParagraphContainer
-            }
+            SyntaxKind::Heading
+            | SyntaxKind::Linebreak
+            | SyntaxKind::Named
+            | SyntaxKind::ListItem => NodeType::ParagraphContainer,
 
-            SyntaxKind::Math | SyntaxKind::SetRule | SyntaxKind::CodeBlock => {
-                NodeType::NonParagraph
-            }
+            SyntaxKind::Math
+            | SyntaxKind::SetRule
+            | SyntaxKind::CodeBlock
+            | SyntaxKind::FuncCall => NodeType::NonParagraph,
 
-            SyntaxKind::Text
-            | SyntaxKind::SmartQuote
-            | SyntaxKind::Space
-            | SyntaxKind::Raw
-            | SyntaxKind::Ref => NodeType::Capture,
+            SyntaxKind::Text | SyntaxKind::SmartQuote | SyntaxKind::Space | SyntaxKind::Ref => {
+                NodeType::Capture
+            }
 
             _ => NodeType::Normal,
         }
@@ -88,20 +92,62 @@ fn recursively_build_paragraphs<'a>(
             current_paragraph.push(node);
             return (vec![], current_paragraph);
         }
+
+        NodeType::SpecialCase => {
+            match node.kind() {
+                SyntaxKind::Raw => {
+                    /*
+                     * Ignore Raw blocks but not inline Raws
+                     * A raw block is a Raw node with
+                     * a first child that has the text "```"
+                     */
+
+                    if let Some(raw_child) = node.children().next() {
+                        if raw_child.text() == "```" {
+                            if !current_paragraph.is_empty() {
+                                paragraphs.push(current_paragraph);
+                            }
+
+                            return (paragraphs, vec![]);
+                        }
+                    }
+                }
+                SyntaxKind::Hash => {
+                    // Hash needs to know siblings, handled in while loop
+                }
+                _ => {}
+            }
+        }
         _ => {}
     }
 
     // Recurse through children, building paragraphs
-    let mut prev_node_kind = SyntaxKind::None;
     let mut iter = node.children().peekable();
     while let Some(child) = iter.next() {
-        // Ignore a raw surrounded by parbreaks
-        if prev_node_kind == SyntaxKind::Parbreak && child.kind() == SyntaxKind::Raw {
-            let maybe_next = iter.peek();
-            if let Some(next) = maybe_next {
-                if next.kind() == SyntaxKind::Parbreak {
-                    prev_node_kind = child.kind();
-                    continue;
+        /*
+         * A Hash should be recorded as a regular hash if:
+         * it is not followed by a field access, in which case handle field access expcilitly
+         */
+        if child.kind() == SyntaxKind::Hash {
+            if let Some(next) = iter.peek() {
+                match next.kind() {
+                    // Hashes for set rules should be ignored
+                    SyntaxKind::SetRule => {
+                        iter.next();
+                        continue;
+                    }
+                    // Field access should only add the final Ident node
+                    SyntaxKind::FieldAccess => {
+                        if let Some(last_node) = next.children().last() {
+                            if last_node.kind() == SyntaxKind::Ident {
+                                current_paragraph.push(&last_node);
+                            }
+                        }
+
+                        iter.next();
+                        continue;
+                    }
+                    _ => {}
                 }
             }
         }
@@ -114,7 +160,6 @@ fn recursively_build_paragraphs<'a>(
         }
 
         current_paragraph = new_current_group;
-        prev_node_kind = child.kind();
     }
 
     // If node is a container, child paragraphs should terminate here
