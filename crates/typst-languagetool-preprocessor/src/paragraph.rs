@@ -32,21 +32,23 @@ impl From<SyntaxKind> for NodeType {
         match value {
             SyntaxKind::Hash | SyntaxKind::Raw => NodeType::SpecialCase,
 
-            SyntaxKind::Parbreak | SyntaxKind::Eof => NodeType::ParagraphTerminator,
+            SyntaxKind::Parbreak | SyntaxKind::Eof | SyntaxKind::Linebreak => {
+                NodeType::ParagraphTerminator
+            }
 
             SyntaxKind::Heading
-            | SyntaxKind::Linebreak
             | SyntaxKind::Named
-            | SyntaxKind::ListItem => NodeType::ParagraphContainer,
+            | SyntaxKind::ListItem
+            | SyntaxKind::ContentBlock => NodeType::ParagraphContainer,
 
-            SyntaxKind::Math
-            | SyntaxKind::SetRule
-            | SyntaxKind::CodeBlock
-            | SyntaxKind::FuncCall => NodeType::NonParagraph,
-
-            SyntaxKind::Text | SyntaxKind::SmartQuote | SyntaxKind::Space | SyntaxKind::Ref => {
-                NodeType::Capture
+            SyntaxKind::Math | SyntaxKind::SetRule | SyntaxKind::CodeBlock => {
+                NodeType::NonParagraph
             }
+
+            SyntaxKind::Text
+            | SyntaxKind::SmartQuote
+            | SyntaxKind::Space
+            | SyntaxKind::RefMarker => NodeType::Capture,
 
             _ => NodeType::Normal,
         }

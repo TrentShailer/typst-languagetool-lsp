@@ -5,7 +5,7 @@
 	"author": "Trent Shailer",
 	"license": "Apache-2.0 OR MIT",
 	"publisher": "trentshailer",
-	"version": "0.3.1",
+	"version": "0.4.0",
 	"engines": {
 		"vscode": "^1.76.0"
 	},
