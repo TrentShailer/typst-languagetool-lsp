@@ -10,6 +10,10 @@ impl Range {
     }
 
     pub fn contains(&self, other: &Range) -> bool {
+        if self.length == 0 {
+            return false;
+        }
+
         if self.offset >= other.offset + other.length {
             return false;
         }
@@ -18,6 +22,6 @@ impl Range {
             return false;
         }
 
-        return true;
+        true
     }
 }

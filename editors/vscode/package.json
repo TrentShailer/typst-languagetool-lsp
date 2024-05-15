@@ -3,9 +3,10 @@
 	"description": "Languagetool for Typst files",
 	"displayName": "Typst Languagetool LSP",
 	"author": "Trent Shailer",
-	"license": "Apache-2.0 OR MIT",
+	"license": "Apache-2.0",
 	"publisher": "trentshailer",
-	"version": "0.4.0",
+	"repository": "https://github.com/TrentShailer/typst-languagetool-lsp",
+	"version": "0.4.1",
 	"engines": {
 		"vscode": "^1.76.0"
 	},
@@ -70,7 +71,8 @@
 	],
 	"scripts": {
 		"build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",
-		"vscode:prepublish": "npm run build-base -- --minify",
+		"vscode:prepublish": "cargo build --release && npm run move-executable && npm run build-base -- --minify",
+		"move-executable": "move ../../target/release/typst-languagetool-lsp.exe ./out/typst-languagetool-lsp.exe",
 		"package": "vsce package",
 		"compile": "npm run build-base --sourcemap",
 		"watch": "npm run build-base --sourcemap --watch",

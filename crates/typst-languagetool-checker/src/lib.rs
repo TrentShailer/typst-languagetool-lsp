@@ -3,7 +3,7 @@ mod position;
 mod problem;
 mod range;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use get_paragraph_blob::get_paragraph_blob;
 
@@ -25,11 +25,11 @@ pub async fn check_file(
     disabled_categories: Option<Vec<String>>,
     ignore_words: Option<Vec<String>>,
 ) -> Result<Vec<Problem>, languagetool_rust::error::Error> {
+    let start = Instant::now();
     let source = Source::new(
         FileId::new(None, VirtualPath::new(file_path)),
         file_contents,
     );
-
     let paragraphs = preprocess(&source);
 
     let client = Arc::new(ServerClient::new(host, port));
@@ -38,8 +38,13 @@ pub async fn check_file(
     let mut tasks: FuturesUnordered<_> = paragraphs
         .iter()
         .enumerate()
-        .map(|(index, paragraph)| {
-            let (blob, node_ranges) = get_paragraph_blob(&paragraph);
+        .filter_map(|(index, paragraph)| {
+            let (blob, node_ranges) = get_paragraph_blob(paragraph);
+
+            // Ignore small blobs
+            if blob.len() <= 5 {
+                return None;
+            }
 
             let mut request = CheckRequest::default()
                 .with_text(blob.clone())
@@ -49,12 +54,21 @@ pub async fn check_file(
 
             let client = Arc::clone(&client);
 
-            async move { (client.check(&request).await, node_ranges, blob, index) }
+            Some(async move { (client.check(&request).await, node_ranges, blob, index) })
         })
         .collect();
 
+    let end = Instant::now();
+    eprintln!(
+        "Created {} tasks from {} paragraphs in {}μs",
+        tasks.len(),
+        paragraphs.len(),
+        end.duration_since(start).as_micros()
+    );
+
     let mut problems = vec![];
 
+    let start = Instant::now();
     // For each check result, find the problems
     while let Some((check_result, node_ranges, blob, index)) = tasks.next().await {
         let check_response = check_result?;
@@ -80,6 +94,12 @@ pub async fn check_file(
             };
         }
     }
+    let end = Instant::now();
+    eprintln!(
+        "Languagetool found {} issues in {}ms",
+        problems.len(),
+        end.duration_since(start).as_millis()
+    );
 
     Ok(problems)
 }

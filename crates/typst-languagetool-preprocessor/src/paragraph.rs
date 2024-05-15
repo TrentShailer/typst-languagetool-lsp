@@ -142,7 +142,7 @@ fn recursively_build_paragraphs<'a>(
                     SyntaxKind::FieldAccess => {
                         if let Some(last_node) = next.children().last() {
                             if last_node.kind() == SyntaxKind::Ident {
-                                current_paragraph.push(&last_node);
+                                current_paragraph.push(last_node);
                             }
                         }
 

@@ -32,10 +32,10 @@ impl Problem {
             return None;
         }
 
-        if nodes.iter().any(|node| match node.kind() {
-            SyntaxKind::Raw | SyntaxKind::Ref => true,
-            _ => false,
-        }) {
+        if nodes
+            .iter()
+            .any(|node| matches!(node.kind(), SyntaxKind::Raw | SyntaxKind::Ref))
+        {
             return None;
         }
 
@@ -120,5 +120,5 @@ fn find_match_nodes<'a>(
         }
     }
 
-    return (match_nodes, match_ranges);
+    (match_nodes, match_ranges)
 }

@@ -63,19 +63,16 @@ impl LanguageServer for Backend {
         .await
     }
 
-    async fn did_change(&self, mut params: DidChangeTextDocumentParams) {
-        self.check_file(
-            params.text_document.uri,
-            std::mem::take(&mut params.content_changes[0].text),
-            Some(params.text_document.version),
-        )
-        .await
-    }
+    // async fn did_change(&self, mut params: DidChangeTextDocumentParams) {
+    //     self.check_file(
+    //         params.text_document.uri,
+    //         std::mem::take(&mut params.content_changes[0].text),
+    //         Some(params.text_document.version),
+    //     )
+    //     .await
+    // }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "Saved file")
-            .await;
         let text = match params.text {
             Some(v) => v,
             None => return,
@@ -93,7 +90,7 @@ impl LanguageServer for Backend {
         for diagnostic in params.context.diagnostics {
             match diagnostic.source {
                 Some(v) => {
-                    if v != String::from("typst-languagetool") {
+                    if v != *"typst-languagetool" {
                         continue;
                     }
                 }
@@ -217,21 +214,21 @@ impl Backend {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
         }
-        .into_iter()
+        .iter()
         .map(|item| item.as_str().unwrap().to_string())
         .collect();
         let disabled_categories = match configuration[4].as_array() {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
         }
-        .into_iter()
+        .iter()
         .map(|item| item.as_str().unwrap().to_string())
         .collect();
         let ignore_words = match configuration[5].as_array() {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
         }
-        .into_iter()
+        .iter()
         .map(|item| item.as_str().unwrap().to_string())
         .collect();
 
@@ -239,29 +236,36 @@ impl Backend {
             host: host.to_string(),
             port: port.to_string(),
             language: language.to_string(),
-            disabled_categories: disabled_categories,
-            disabled_rules: disabled_rules,
-            ignore_words: ignore_words,
+            disabled_categories,
+            disabled_rules,
+            ignore_words,
         })
     }
 
     async fn check_file(&self, uri: Url, text: String, version: Option<i32>) {
+        eprintln!(
+            "\nChecking file '{}'",
+            uri.path_segments()
+                .unwrap_or_else(|| "/.".split('/'))
+                .last()
+                .unwrap_or(".")
+        );
+
         let configuration = match self.get_configuration().await {
             Ok(v) => v,
             Err(e) => {
+                eprintln!("Failed to get configuration: {}", e);
                 self.client
-                    .log_message(MessageType::ERROR, e.to_string())
+                    .show_message(
+                        MessageType::ERROR,
+                        format!("Failed to get configuration: {}", e),
+                    )
                     .await;
                 return;
             }
         };
 
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("Checking with client config: {:#?}", configuration),
-            )
-            .await;
+        eprintln!("{:#?}", configuration);
 
         let problems = check_file(
             &configuration.host,
@@ -278,11 +282,9 @@ impl Backend {
         let problems = match problems {
             Ok(v) => v,
             Err(e) => {
+                eprintln!("Failed to check file: {}", e);
                 self.client
-                    .show_message(
-                        MessageType::ERROR,
-                        format!("Failed to check file with languagetool: {}", e.to_string()),
-                    )
+                    .show_message(MessageType::ERROR, format!("Failed to check file: {}", e))
                     .await;
                 return;
             }
@@ -300,10 +302,11 @@ impl Backend {
             let data = match serde_json::to_value(diagnostic_data) {
                 Ok(v) => v,
                 Err(e) => {
+                    eprintln!("Failed to serialze diagnostic data: {}", e);
                     self.client
-                        .log_message(
+                        .show_message(
                             MessageType::ERROR,
-                            format!("Failed to serialze diagnostic data: {}", e.to_string()),
+                            format!("Failed to serialze diagnostic data: {}", e),
                         )
                         .await;
                     continue;
@@ -322,9 +325,7 @@ impl Backend {
                     },
                 ),
                 severity: Some(DiagnosticSeverity::WARNING),
-                code: Some(NumberOrString::String(
-                    format!("{}", problem.rule_category,),
-                )),
+                code: Some(NumberOrString::String(problem.rule_category.to_string())),
                 source: Some(String::from("typst-languagetool")),
                 message: problem.message,
                 data: Some(data),
