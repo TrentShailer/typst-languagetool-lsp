@@ -6,7 +6,7 @@
 	"license": "Apache-2.0",
 	"publisher": "trentshailer",
 	"repository": "https://github.com/TrentShailer/typst-languagetool-lsp",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"engines": {
 		"vscode": "^1.76.0"
 	},
@@ -25,7 +25,7 @@
 				"typst-languagetool-lsp.port": {
 					"title": "Port",
 					"description": "Port of your languagetool server, leave blank for no port.",
-					"type": "string",
+					"type": "number",
 					"order": 1
 				},
 				"typst-languagetool-lsp.language": {
@@ -61,6 +61,12 @@
 						"type": "string"
 					},
 					"order": 5
+				},
+				"typst-languagetool-lsp.picky": {
+					"title": "Picky",
+					"description": "Enable picky mode.",
+					"type": "boolean",
+					"order": 6
 				}
 			}
 		},

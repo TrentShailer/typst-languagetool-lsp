@@ -1,8 +1,13 @@
-[workspace]
-resolver = "2"
-members = ["crates/*"]
+[package]
+name = "typst-languagetool-lsp"
+version = "0.5.0"
+edition = "2021"
 
-[workspace.dependencies]
-typst = "0.11.0"
-typst-languagetool-preprocessor = { path = "crates/typst-languagetool-preprocessor" }
-typst-languagetool-checker = { path = "crates/typst-languagetool-checker" }
+[dependencies]
+typst-spellcheck = { git = "https://github.com/trentshailer/typst-spellcheck.git" }
+
+tokio = { version = "1.37.0", features = ["full"] }
+tower-lsp = "0.20.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+thiserror = "1.0.59"

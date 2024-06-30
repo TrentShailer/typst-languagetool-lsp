@@ -7,7 +7,7 @@ use tower_lsp::{
     lsp_types::*,
     Client, LanguageServer, LspService, Server,
 };
-use typst_languagetool_checker::check_file;
+use typst_spellcheck::{spellchecker::Spellchecker, LanguageToolConfig, SpellcheckConfig};
 
 #[tokio::main]
 async fn main() {
@@ -195,6 +195,7 @@ impl Backend {
                 new_configuration_item("disabled_rules"),
                 new_configuration_item("disabled_categories"),
                 new_configuration_item("ignore_words"),
+                new_configuration_item("picky"),
             ])
             .await?;
 
@@ -202,14 +203,17 @@ impl Backend {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
         };
-        let port = match configuration[1].as_str() {
-            Some(v) => v,
+
+        let port = match configuration[1].as_u64() {
+            Some(v) => v as u16,
             None => return Err(GetConfigurationError::Parse),
         };
+
         let language = match configuration[2].as_str() {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
         };
+
         let disabled_rules = match configuration[3].as_array() {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
@@ -217,6 +221,7 @@ impl Backend {
         .iter()
         .map(|item| item.as_str().unwrap().to_string())
         .collect();
+
         let disabled_categories = match configuration[4].as_array() {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
@@ -224,6 +229,7 @@ impl Backend {
         .iter()
         .map(|item| item.as_str().unwrap().to_string())
         .collect();
+
         let ignore_words = match configuration[5].as_array() {
             Some(v) => v,
             None => return Err(GetConfigurationError::Parse),
@@ -232,13 +238,19 @@ impl Backend {
         .map(|item| item.as_str().unwrap().to_string())
         .collect();
 
+        let picky = match configuration[6].as_bool() {
+            Some(v) => v,
+            None => false,
+        };
+
         Ok(Settings {
             host: host.to_string(),
-            port: port.to_string(),
+            port,
             language: language.to_string(),
             disabled_categories,
             disabled_rules,
             ignore_words,
+            picky,
         })
     }
 
@@ -267,19 +279,26 @@ impl Backend {
 
         eprintln!("{:#?}", configuration);
 
-        let problems = check_file(
-            &configuration.host,
-            &configuration.port,
-            uri.as_str(),
-            text,
-            configuration.language,
-            Some(configuration.disabled_rules),
-            Some(configuration.disabled_categories),
-            Some(configuration.ignore_words),
-        )
-        .await;
+        let mut disabled_rules = configuration.disabled_rules;
+        disabled_rules.push("WHITESPACE_RULE".to_string());
 
-        let problems = match problems {
+        let languagetool_config = LanguageToolConfig {
+            host: configuration.host,
+            port: configuration.port,
+            disabled_categories: Some(configuration.disabled_categories),
+            disabled_rules: Some(disabled_rules),
+            language: configuration.language,
+            picky: Some(configuration.picky),
+        };
+
+        let spellcheck_config = SpellcheckConfig {
+            ignore_words: Some(configuration.ignore_words),
+        };
+
+        let spellchecker = Spellchecker::new(languagetool_config, spellcheck_config);
+        let result = spellchecker.check_file(uri.as_str(), text, false).await;
+
+        let (mut problems, _metadata) = match result {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("Failed to check file: {}", e);
@@ -289,6 +308,8 @@ impl Backend {
                 return;
             }
         };
+
+        problems.sort();
 
         let mut diagnostics = vec![];
 
@@ -316,12 +337,12 @@ impl Backend {
             let diagnostic = Diagnostic {
                 range: Range::new(
                     Position {
-                        line: problem.range_start.line as u32,
-                        character: problem.range_start.column as u32,
+                        line: problem.range.start.line as u32 - 1,
+                        character: problem.range.start.column as u32 - 1,
                     },
                     Position {
-                        line: problem.range_end.line as u32,
-                        character: problem.range_end.column as u32,
+                        line: problem.range.end.line as u32 - 1,
+                        character: problem.range.end.column as u32 - 1,
                     },
                 ),
                 severity: Some(DiagnosticSeverity::WARNING),
@@ -352,9 +373,10 @@ struct DiagnosticData {
 #[derive(Clone, Debug, Default, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]
 struct Settings {
     pub host: String,
-    pub port: String,
+    pub port: u16,
     pub language: String,
     pub disabled_rules: Vec<String>,
     pub disabled_categories: Vec<String>,
     pub ignore_words: Vec<String>,
+    pub picky: bool,
 }
